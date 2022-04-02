@@ -21,7 +21,7 @@ def run_random_walks_n2v(graph, adj, num_walks, walk_len):
     for edge in graph.edges():
         nx_G[edge[0]][edge[1]]['weight'] = adj[edge[0], edge[1]]
 
-    G = Graph_RandomWalk(nx_G, False, 1.0, 1.0)
+    G = Graph_RandomWalk(nx_G, False, 1.0, 1.0)#？
     G.preprocess_transition_probs()
     walks = G.simulate_walks(num_walks, walk_len)
     WINDOW_SIZE = 10
@@ -59,12 +59,13 @@ def fixed_unigram_candidate_sampler(true_clasees,
 
 def to_device(batch, device):
     feed_dict = copy.deepcopy(batch)
-    node_1, node_2, node_2_negative, graphs = feed_dict.values()
+    # node_1, node_2, node_2_negative, graphs = feed_dict.values()
+    node_1, node_2, node_2_negative = feed_dict.values()
     # to device
     feed_dict["node_1"] = [x.to(device) for x in node_1]
     feed_dict["node_2"] = [x.to(device) for x in node_2]
     feed_dict["node_2_neg"] = [x.to(device) for x in node_2_negative]
-    feed_dict["graphs"] = [g.to(device) for g in graphs]
+    # feed_dict["graphs"] = [g.to(device) for g in graphs]
 
     return feed_dict
 

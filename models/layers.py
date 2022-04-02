@@ -42,6 +42,7 @@ class StructuralAttentionLayer(nn.Module):
         if self.residual:
             self.lin_residual = nn.Linear(input_dim, n_heads * self.out_dim, bias=False)
 
+        self.xavier_init()
 
     def forward(self, graph):
         graph = copy.deepcopy(graph)
@@ -73,6 +74,10 @@ class StructuralAttentionLayer(nn.Module):
         graph.x = out
         return graph
 
+    def xavier_init(self):
+        nn.init.xavier_uniform_(self.att_l)
+        nn.init.xavier_uniform_(self.att_r)
+
         
 class TemporalAttentionLayer(nn.Module):
     def __init__(self, 
@@ -97,6 +102,7 @@ class TemporalAttentionLayer(nn.Module):
         self.attn_dp = nn.Dropout(attn_drop)
         self.xavier_init()
 
+
     def forward(self, inputs):
         """In:  attn_outputs (of StructuralAttentionLayer at each snapshot):= [N, T, F]"""
         # 1: Add position embeddings to input
@@ -104,7 +110,7 @@ class TemporalAttentionLayer(nn.Module):
         temporal_inputs = inputs + self.position_embeddings[position_inputs] # [N, T, F]
 
         # 2: Query, Key based multi-head self attention.
-        q = torch.tensordot(temporal_inputs, self.Q_embedding_weights, dims=([2],[0])) # [N, T, F]
+        q = torch.tensordot(temporal_inputs, self.Q_embedding_weights, dims=([2],[0])) # [N, T, F],torch.tensordot
         k = torch.tensordot(temporal_inputs, self.K_embedding_weights, dims=([2],[0])) # [N, T, F]
         v = torch.tensordot(temporal_inputs, self.V_embedding_weights, dims=([2],[0])) # [N, T, F]
 
@@ -118,7 +124,7 @@ class TemporalAttentionLayer(nn.Module):
         outputs = outputs / (self.num_time_steps ** 0.5)
         # 4: Masked (causal) softmax to compute attention weights.
         diag_val = torch.ones_like(outputs[0])
-        tril = torch.tril(diag_val)
+        tril = torch.tril(diag_val)#下三角
         masks = tril[None, :, :].repeat(outputs.shape[0], 1, 1) # [h*N, T, T]
         padding = torch.ones_like(masks) * (-2**32+1)
         outputs = torch.where(masks==0, padding, outputs)

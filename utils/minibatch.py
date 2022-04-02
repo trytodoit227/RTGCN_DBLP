@@ -39,7 +39,8 @@ class MyDataset(Dataset):
 
     def _preprocess_features(self, features):
         """Row-normalize feature matrix and convert to tuple representation"""
-        features = np.array(features.todense())
+        # features = np.array(features.todense())
+        features = np.array(features)
         rowsum = np.array(features.sum(1))
         r_inv = np.power(rowsum, -1).flatten()
         r_inv[np.isinf(r_inv)] = 0.
@@ -71,6 +72,8 @@ class MyDataset(Dataset):
 
     def __len__(self):
         return len(self.train_nodes)
+    def end(self):
+        return self.batch_num * self.batch_size >= len(self.train_nodes)
 
     def __getitem__(self, index):
         node = self.train_nodes[index]
@@ -103,7 +106,7 @@ class MyDataset(Dataset):
                 node_positive = node_2_list[t][:, None]
                 node_negative = fixed_unigram_candidate_sampler(true_clasees=node_positive,
                                                                 num_true=1,
-                                                                num_sampled=self.args.neg_sample_size,
+                                                                num_sampled=self.args.neg_sample_size,#[10]
                                                                 unique=False,
                                                                 distortion=0.75,
                                                                 unigrams=degree)
@@ -112,9 +115,34 @@ class MyDataset(Dataset):
             feed_dict['node_1']=node_1_list
             feed_dict['node_2']=node_2_list
             feed_dict['node_2_neg']=node_2_neg_list
-            feed_dict["graphs"] = self.pyg_graphs
+            # feed_dict["graphs"] = self.pyg_graphs
         
             self.data_items[node] = feed_dict
+
+    def num_training_batches(self):
+        """ Compute the number of training batches (using batch size)"""
+        return len(self.train_nodes) // self.batch_size + 1
+
+    # def next_minibatch_feed_dict(self):
+    #     """ Return the feed_dict for the next minibatch (in the current epoch) with random shuffling"""
+    #     start_idx = self.batch_num * self.batch_size
+    #     self.batch_num += 1
+    #     end_idx = min(start_idx + self.batch_size, len(self.train_nodes))
+    #     batch_nodes = self.train_nodes[start_idx : end_idx]
+    #     return self.__createitems__(batch_nodes)
+
+    def shuffle(self):
+        """ Re-shuffle the training set.
+            Also reset the batch number.
+        """
+        self.train_nodes = np.random.permutation(self.train_nodes)
+        self.batch_num = 0
+
+    def test_reset(self):
+        """ Reset batch number"""
+        self.train_nodes =  list(self.graphs[self.time_steps-1].nodes())
+        self.batch_num = 0
+
 
     @staticmethod
     def collate_fn(samples):
@@ -127,7 +155,7 @@ class MyDataset(Dataset):
             for t in range(len(data_list[0])):
                 concate.append(torch.cat([data[t] for data in data_list]))
             batch_dict[key] = concate
-        batch_dict["graphs"] = samples[0]["graphs"]
+        # batch_dict["graphs"] = samples[0]["graphs"]
         return batch_dict
 
 

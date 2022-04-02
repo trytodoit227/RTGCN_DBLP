@@ -4,6 +4,7 @@ import dill
 import pickle as pkl
 import networkx as nx
 import scipy.sparse as sp
+import random
 
 from sklearn.model_selection import train_test_split
 from utils.utilities import run_random_walks_n2v
@@ -12,11 +13,25 @@ np.random.seed(123)
 
 def load_graphs(dataset_str):
     """Load graph snapshots given the name of dataset"""
-    with open("data/{}/{}".format(dataset_str, "graph.pkl"), "rb") as f:
-        graphs = pkl.load(f)
-    print("Loaded {} graphs ".format(len(graphs)))
-    adjs = [nx.adjacency_matrix(g) for g in graphs]
-    return graphs, adjs
+    # with open("data/{}/{}".format(dataset_str, "graph.pkl"), "rb") as f:
+    #     graphs = pkl.load(f)
+
+    data_path=("data/{}/{}".format(dataset_str, "DBLP3.npz"))
+    data_dblp = np.load(data_path, allow_pickle=True)
+    adj_matrix = data_dblp['adjs']  # nadarry
+    attribute_matrix = data_dblp['attmats']  # nadarry
+    # label_matrix = data_dblp['labels']  # nadarry
+    G=[]
+    for i in range(len(adj_matrix)):
+        G.append(nx.Graph(adj_matrix[i]))
+
+    # print("Loaded {} graphs ".format(len(graphs)))
+    adjs = [nx.adjacency_matrix(g) for g in G]
+    Attribute_matrix=[]
+    for j in range(len(adj_matrix)):
+        Attribute_matrix.append(attribute_matrix[:,j,:])
+
+    return G, adjs,Attribute_matrix,data_dblp
 
 def get_context_pairs(graphs, adjs):
     """ Load/generate context pairs for each snapshot through random walk sampling."""
@@ -27,9 +42,9 @@ def get_context_pairs(graphs, adjs):
 
     return context_pairs_train
 
-def get_evaluation_data(graphs):
+def get_evaluation_data(graphs,time_step):
     """ Load train/val/test examples to evaluate link prediction performance"""
-    eval_idx = len(graphs) - 2
+    eval_idx = time_step - 2
     eval_graph = graphs[eval_idx]
     next_graph = graphs[eval_idx+1]
     print("Generating eval data ....")
@@ -70,3 +85,23 @@ def negative_sample(edges_pos, nodes_num, next_graph):
                 continue
         edges_neg.append([idx_i, idx_j])
     return edges_neg
+
+def get_evaluation_classification_data(dataset,num_nodes,num_time_steps):
+    eval_idx=num_time_steps-2
+    eval_path='data/{}/eval_nodeclassification_{}.npz'.format(dataset,str(eval_idx))
+    
+    train_ratios=[0.3,0.5,0.7]
+    datas=[]
+    for ratio in train_ratios:
+        data=[]
+        for i in range(num_time_steps):
+            idx_val=random.sample(range(num_nodes),int(num_nodes*0.25))
+            remaining=np.setdiff1d(np.array(range(num_nodes)),idx_val)
+            idx_train=random.sample(list(remaining),int(num_nodes*ratio))
+            idx_test=np.setdiff1d(np.array(remaining),idx_train)
+            
+            data.append([idx_train,idx_val,list(idx_test)])
+            
+        datas.append(data)
+    np.savez(eval_path,data=np.array(datas))
+    return datas

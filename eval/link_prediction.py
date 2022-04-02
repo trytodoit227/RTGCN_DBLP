@@ -1,5 +1,6 @@
 from __future__ import division, print_function
 from sklearn.metrics import roc_auc_score
+from sklearn.metrics import (f1_score, auc, precision_recall_curve)
 import numpy as np
 from sklearn import linear_model
 from collections import defaultdict
@@ -67,8 +68,8 @@ def evaluate_classifier(train_pos, train_neg, val_pos, val_neg, test_pos, test_n
     test_results = defaultdict(lambda: [])
     val_results = defaultdict(lambda: [])
 
-    test_auc = get_roc_score_t(test_pos, test_neg, source_embeds, target_embeds)
-    val_auc = get_roc_score_t(val_pos, val_neg, source_embeds, target_embeds)
+    test_auc , test_f1, test_pr_auc= get_roc_score_t(test_pos, test_neg, source_embeds, target_embeds)
+    val_auc, val_f1, val_pr_auc = get_roc_score_t(val_pos, val_neg, source_embeds, target_embeds)
 
     # Compute AUC based on sigmoid(u^T v) without classifier training.
     test_results['SIGMOID'].extend([test_auc, test_auc])
@@ -101,7 +102,7 @@ def evaluate_classifier(train_pos, train_neg, val_pos, val_neg, test_pos, test_n
         test_data = np.vstack((test_pos_feats, test_neg_feats))
         test_labels = np.append(test_pos_labels, test_neg_labels)
 
-        logistic = linear_model.LogisticRegression()
+        logistic = linear_model.LogisticRegression(max_iter=4000)
         logistic.fit(train_data, train_labels)
         test_predict = logistic.predict_proba(test_data)[:, 1]
         val_predict = logistic.predict_proba(val_data)[:, 1]
@@ -109,11 +110,34 @@ def evaluate_classifier(train_pos, train_neg, val_pos, val_neg, test_pos, test_n
         test_roc_score = roc_auc_score(test_labels, test_predict)
         val_roc_score = roc_auc_score(val_labels, val_predict)
 
-        val_results[operator].extend([val_roc_score, val_roc_score])
-        test_results[operator].extend([test_roc_score, test_roc_score])
+        val_results[operator].extend([val_roc_score])
+        test_results[operator].extend([test_roc_score])
 
         val_pred_true[operator].extend(zip(val_predict, val_labels))
         test_pred_true[operator].extend(zip(test_predict, test_labels))
+
+        # add new metric
+        pred_score = test_predict
+        pred_score_sort = np.sort(pred_score)
+        pred_label = (pred_score >= pred_score_sort[int(len(pred_score) / 2)]).astype(int)
+        pred_label[pred_label == True] = 1
+        pred_label[pred_label == False] = -1
+        test_f1 = f1_score(test_labels, pred_label)
+
+        pred_score = val_predict
+        pred_score_sort = np.sort(pred_score)
+        pred_label = (pred_score >= pred_score_sort[int(len(pred_score) / 2)]).astype(int)
+        pred_label[pred_label == True] = 1
+        pred_label[pred_label == False] = -1
+        val_f1 = f1_score(val_labels, pred_label)
+
+        test_ps, test_rs, _ = precision_recall_curve(test_labels, test_predict)
+        val_ps, val_rs, _ = precision_recall_curve(val_labels, val_predict)
+        test_pr = auc(test_rs, test_ps)
+        val_pr = auc(val_rs, val_ps)
+
+        val_results[operator].extend([val_f1, val_pr])
+        test_results[operator].extend([test_f1, test_pr])
 
     return val_results, test_results, val_pred_true, test_pred_true
 
@@ -140,4 +164,18 @@ def get_roc_score_t(edges_pos, edges_neg, source_emb, target_emb):
     pred_all = np.hstack([pred, pred_neg])
     labels_all = np.hstack([np.ones(len(pred)), np.zeros(len(pred_neg))])
     roc_score = roc_auc_score(labels_all, pred_all)
-    return roc_score
+
+    ##############################__+_+
+    pred_score = pred_all
+    true_label = labels_all
+    ps, rs, _ = precision_recall_curve(true_label, pred_score)
+
+    pred_score_sort = np.sort(pred_score)
+    pred_label = (pred_score >= pred_score_sort[int(len(pred_score) / 2)]).astype(int)
+    pred_label[pred_label == True] = 1.0
+    pred_label[pred_label == False] = 0.0
+
+    f1 = f1_score(true_label, pred_label)
+
+    pr_auc = auc(rs, ps)
+    return roc_score, f1, pr_auc

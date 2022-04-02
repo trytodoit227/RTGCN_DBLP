@@ -1,15 +1,22 @@
-# DySAT: Deep Neural Representation Learning on Dynamic Graphs via Self-Attention Networks
-This is a pytorch implementation of DySAT. All codes are adapted from official [implementation in TensorFlow](https://github.com/aravindsankar28/DySAT). This implementation is only tested using dataset Enron, and the results is inconsistent with official results (better than that). Code review and contribution is welcome!
+# Representation Learning of Temporal Graphs with Structural Roles
 
-# Raw Data Process
-```
-cd raw_data/Enron
-pyhton process.py
-```
-The processed data will stored at 'data/Enron"
 
-# Training
-```
-python train --dataset Enron --time_steps 16
+### 1.Environment
+`pip install -r requirements.txt`
+
+
+## 2. Examples
+>> python main.py 
+
+## Acknowledgements
+* ```
+  This code is based on the works: 
+  https://github.com/aravindsankar28/DySAT
+  and
+  https://github.com/IBM/EvolveGCN
+  Sincere thanks to them.
+  ```
+
+* The code will be continuously improved and updated.
 ```
 
