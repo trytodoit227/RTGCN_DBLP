@@ -6,7 +6,7 @@
 
 
 ## 2. Examples
->> python main.py 
+>> python train.py 
 
 ## Acknowledgements
 * ```
