@@ -1,11 +1,3 @@
-# -*- encoding: utf-8 -*-
-'''
-@File    :   layers.py
-@Time    :   2021/02/18 14:30:13
-@Author  :   Fei gao 
-@Contact :   feig@mail.bnu.edu.cn
-BNU, Beijing, China
-'''
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
